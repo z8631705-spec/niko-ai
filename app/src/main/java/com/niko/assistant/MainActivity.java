@@ -2,114 +2,223 @@ package com.niko.assistant;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.content.Intent;
-import android.speech.RecognizerIntent;
-import android.speech.tts.TextToSpeech;
-import android.widget.*;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
-import java.util.*;
+import android.view.View;
+import android.widget.*;
+import android.speech.tts.TextToSpeech;
+import android.speech.RecognizerIntent;
+import android.content.Intent;
+import java.util.Locale;
 
 public class MainActivity extends Activity {
 
-    TextView response;
+    TextView chat, status;
     EditText input;
     TextToSpeech speaker;
+    LinearLayout messages;
+
+    int red = Color.rgb(255, 40, 65);
+
+    GradientDrawable shape(int color, int radius) {
+        GradientDrawable d = new GradientDrawable();
+        d.setColor(color);
+        d.setCornerRadius(radius);
+        return d;
+    }
+
+    TextView text(String value, int size, int color) {
+        TextView t = new TextView(this);
+        t.setText(value);
+        t.setTextSize(size);
+        t.setTextColor(color);
+        t.setGravity(Gravity.CENTER);
+        return t;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        speaker = new TextToSpeech(this, status -> {
-            if(status == TextToSpeech.SUCCESS) {
+        speaker = new TextToSpeech(this, result -> {
+            if (result == TextToSpeech.SUCCESS) {
                 speaker.setLanguage(new Locale("fa", "IR"));
             }
         });
 
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(1);
-        layout.setGravity(Gravity.CENTER);
-        layout.setPadding(25, 35, 25, 25);
-        layout.setBackgroundColor(Color.rgb(10,10,10));
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(22, 25, 22, 15);
+        root.setBackgroundColor(Color.rgb(8, 8, 12));
 
-        TextView title = new TextView(this);
-        title.setText("N I K O");
-        title.setTextColor(Color.RED);
-        title.setTextSize(35);
-        title.setGravity(Gravity.CENTER);
+        TextView title = text("N I K O", 30, red);
+        title.setTypeface(null, Typeface.BOLD);
+        root.addView(title);
 
-        response = new TextView(this);
-        response.setText("سلام! من نیکو هستم.");
-        response.setTextColor(Color.WHITE);
-        response.setTextSize(19);
-        response.setGravity(Gravity.CENTER);
-        response.setPadding(10,40,10,40);
+        status = text("●  SYSTEM ONLINE", 12,
+                Color.rgb(130, 130, 145));
+        root.addView(status);
+
+        TextView subtitle = text(
+                "YOUR PERSONAL AI ASSISTANT", 10,
+                Color.GRAY);
+        subtitle.setPadding(0, 5, 0, 25);
+        root.addView(subtitle);
+
+        TextView orb = text("N", 55, Color.WHITE);
+        orb.setTypeface(null, Typeface.BOLD);
+        orb.setBackground(shape(red, 200));
+
+        LinearLayout.LayoutParams orbParams =
+                new LinearLayout.LayoutParams(155, 155);
+        orbParams.gravity = Gravity.CENTER;
+        orbParams.setMargins(0, 15, 0, 10);
+        root.addView(orb, orbParams);
+
+        TextView greeting = text(
+                "سلام! من نیکو هستم.", 19, Color.WHITE);
+        root.addView(greeting);
+
+        TextView description = text(
+                "آماده‌ام به حرف‌هات گوش بدم.", 13,
+                Color.GRAY);
+        root.addView(description);
+
+        messages = new LinearLayout(this);
+        messages.setOrientation(LinearLayout.VERTICAL);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(messages);
+
+        LinearLayout.LayoutParams scrollParams =
+                new LinearLayout.LayoutParams(
+                        -1, 0, 1);
+        scrollParams.setMargins(0, 20, 0, 15);
+        root.addView(scroll, scrollParams);
+
+        LinearLayout bottom = new LinearLayout(this);
+        bottom.setGravity(Gravity.CENTER_VERTICAL);
+        bottom.setPadding(8, 7, 8, 7);
+        bottom.setBackground(shape(
+                Color.rgb(28, 28, 35), 35));
 
         input = new EditText(this);
-        input.setHint("با نیکو صحبت کن...");
-        input.setTextColor(Color.WHITE);
+        input.setHint("پیامت رو بنویس...");
         input.setHintTextColor(Color.GRAY);
+        input.setTextColor(Color.WHITE);
+        input.setTextSize(14);
+        input.setSingleLine(true);
+        input.setBackgroundColor(Color.TRANSPARENT);
 
-        Button send = new Button(this);
-        send.setText("ارسال پیام");
-        send.setOnClickListener(v -> reply());
+        bottom.addView(input,
+                new LinearLayout.LayoutParams(0, 55, 1));
 
-        Button voice = new Button(this);
-        voice.setText("🎙 صحبت با نیکو");
-        voice.setOnClickListener(v -> listen());
+        TextView send = text("➤", 23, Color.WHITE);
+        send.setBackground(shape(red, 50));
 
-        layout.addView(title);
-        layout.addView(response);
-        layout.addView(input);
-        layout.addView(send);
-        layout.addView(voice);
+        LinearLayout.LayoutParams sendParams =
+                new LinearLayout.LayoutParams(48, 48);
+        bottom.addView(send, sendParams);
 
-        setContentView(layout);
+        send.setOnClickListener(v -> sendMessage());
+
+        root.addView(bottom);
+
+        TextView mic = text("🎙  صحبت با نیکو", 16,
+                Color.WHITE);
+        mic.setBackground(shape(
+                Color.rgb(150, 20, 38), 35));
+
+        LinearLayout.LayoutParams micParams =
+                new LinearLayout.LayoutParams(-1, 55);
+        micParams.setMargins(0, 12, 0, 0);
+        root.addView(mic, micParams);
+
+        mic.setOnClickListener(v -> voiceInput());
+
+        setContentView(root);
     }
 
-    void reply() {
-        String text = input.getText().toString().trim();
+    void sendMessage() {
+        String message = input.getText().toString().trim();
 
-        if(text.isEmpty()) return;
+        if (message.isEmpty()) return;
 
-        String answer = "پیامت رو شنیدم. هنوز موتور هوش مصنوعی من متصل نشده.";
-
-        response.setText(answer);
-        speaker.speak(answer, TextToSpeech.QUEUE_FLUSH, null, "niko");
+        addMessage("تو: " + message, true);
         input.setText("");
+
+        String answer =
+                "پیامت رو دریافت کردم. موتور هوش مصنوعی هنوز متصل نشده.";
+
+        addMessage("NIKO: " + answer, false);
+
+        if (speaker != null) {
+            speaker.speak(answer,
+                    TextToSpeech.QUEUE_FLUSH, null, "niko");
+        }
     }
 
-    void listen() {
-        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "fa-IR");
-        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+    void addMessage(String value, boolean user) {
+        TextView bubble = text(value, 14, Color.WHITE);
+        bubble.setGravity(Gravity.RIGHT);
+        bubble.setPadding(16, 13, 16, 13);
+        bubble.setBackground(shape(
+                user ? Color.rgb(100, 20, 35)
+                     : Color.rgb(35, 35, 45), 20));
+
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(-1, -2);
+        params.setMargins(0, 5, 0, 5);
+        messages.addView(bubble, params);
+    }
+
+    void voiceInput() {
+        Intent intent = new Intent(
+                RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+
+        intent.putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+
+        intent.putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE, "fa-IR");
 
         try {
             startActivityForResult(intent, 100);
-        } catch(Exception e) {
-            response.setText("تشخیص گفتار در دسترس نیست.");
+        } catch (Exception e) {
+            addMessage(
+                    "تشخیص گفتار روی این دستگاه در دسترس نیست.",
+                    false);
         }
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    protected void onActivityResult(
+            int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if(requestCode == 100 && resultCode == RESULT_OK && data != null) {
-            ArrayList<String> results =
-                    data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+        if (requestCode == 100 &&
+                resultCode == RESULT_OK && data != null) {
 
-            if(results != null && !results.isEmpty()) {
+            java.util.ArrayList<String> results =
+                    data.getStringArrayListExtra(
+                    RecognizerIntent.EXTRA_RESULTS);
+
+            if (results != null && !results.isEmpty()) {
                 input.setText(results.get(0));
-                reply();
+                sendMessage();
             }
         }
     }
 
     @Override
     protected void onDestroy() {
-        if(speaker != null) speaker.shutdown();
+        if (speaker != null) {
+            speaker.stop();
+            speaker.shutdown();
+        }
         super.onDestroy();
     }
-}
+            }
