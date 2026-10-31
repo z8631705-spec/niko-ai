@@ -276,54 +276,47 @@ public class MainActivity extends Activity {
     }
 
     private void handleVoice(String words) {
-        result.setText("تو گفتی: " + words);
+    result.setText("تو گفتی: " + words);
 
-        // فعلاً موتور هوش مصنوعی متصل نشده است.
-        String answer = "صدات رو شنیدم. موتور هوش مصنوعی هنوز متصل نشده.";
+    String command = words.toLowerCase();
+    String answer;
 
-        speak(answer);
+    if (command.contains("ساعت")) {
+        answer = "الان ساعت " +
+            new java.text.SimpleDateFormat(
+                "HH:mm",
+                java.util.Locale.getDefault()
+            ).format(new java.util.Date()) + " است.";
     }
-
-    private void speak(String words) {
-        if (tts != null && ready) {
-            status.setText("● در حال پاسخ");
-            tts.speak(
-                words,
-                TextToSpeech.QUEUE_FLUSH,
+    else if (command.contains("تاریخ")) {
+        answer = "امروز " +
+            java.text.DateFormat.getDateInstance(
+                java.text.DateFormat.FULL,
+                new java.util.Locale("fa", "IR")
+            ).format(new java.util.Date()) + " است.";
+    }
+    else if (command.contains("باتری")) {
+        android.content.Intent battery =
+            registerReceiver(
                 null,
-                "NIKO_RESPONSE"
+                new android.content.IntentFilter(
+                    android.content.Intent.ACTION_BATTERY_CHANGED
+                )
             );
+
+        if (battery != null) {
+            int level = battery.getIntExtra(
+                android.os.BatteryManager.EXTRA_LEVEL, -1
+            );
+            answer = "شارژ باتری " + level + " درصد است.";
         } else {
-            status.setText("● پاسخ متنی آماده است");
+            answer = "نتونستم وضعیت باتری رو بخونم.";
         }
     }
-
-    @Override
-    public void onRequestPermissionsResult(
-        int requestCode, String[] permissions, int[] results) {
-        super.onRequestPermissionsResult(
-            requestCode, permissions, results
-        );
-
-        if (requestCode == 10 && results.length > 0
-                && results[0] == PackageManager.PERMISSION_GRANTED) {
-            status.setText("● میکروفون فعال شد");
-        }
+    else {
+        answer = "این فرمان رو هنوز یاد نگرفتم.";
     }
 
-    @Override
-    protected void onDestroy() {
-        if (recognizer != null) {
-            recognizer.destroy();
-        }
-
-        if (tts != null) {
-            tts.stop();
-            tts.shutdown();
-        }
-
-        super.onDestroy();
+    result.setText(answer);
+    speak(answer);
     }
-}
-
-
