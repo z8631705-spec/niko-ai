@@ -320,3 +320,15 @@ public class MainActivity extends Activity {
     result.setText(answer);
     speak(answer);
     }
+    private void openApp(String packageName) {
+        Intent launchIntent = getPackageManager()
+            .getLaunchIntentForPackage(packageName);
+
+        if (launchIntent != null) {
+            startActivity(launchIntent);
+        } else {
+            result.setText("این برنامه نصب نیست.");
+        }
+    }
+
+    private void speak(String words) {
